@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: price-elasticity-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/').read()\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Frontend Service (React / Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: price-elasticity-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
