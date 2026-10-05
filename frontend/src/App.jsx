@@ -18,6 +18,7 @@ import {
   BarChart3,
   Download,
   CheckCircle2,
+  TrendingDown,
 } from 'lucide-react';
 
 export default function App() {
@@ -80,6 +81,20 @@ export default function App() {
       });
     }
 
+    // Baseline calculation at user's set base price
+    const basePriceRatio = basePrice / Math.max(1, basePrice);
+    const baseCompetitorRatio = competitorPrice / Math.max(1, basePrice);
+    const baseMarketingLift = Math.log10(marketingBudget + 10) * 15;
+    let baseDemand = Math.round(
+      (1000 / Math.pow(basePriceRatio, 1.4)) * baseCompetitorRatio * multiplier + baseMarketingLift
+    );
+    baseDemand = Math.max(0, baseDemand);
+    const baseRevenue = Math.round(basePrice * baseDemand);
+    const baseTotalCost = Math.round(unitCost * baseDemand + marketingBudget);
+    const baseProfit = Math.round(baseRevenue - baseTotalCost);
+
+    const profitGain = optimalProfit - baseProfit;
+    const profitLift = baseProfit !== 0 ? ((profitGain / Math.abs(baseProfit)) * 100).toFixed(1) : '0.0';
     const profitMargin = maxRevenue > 0 ? ((optimalProfit / maxRevenue) * 100).toFixed(1) : '0.0';
 
     return {
@@ -88,6 +103,9 @@ export default function App() {
         max_revenue: maxRevenue,
         optimal_profit: optimalProfit,
         profit_margin: profitMargin,
+        base_profit: baseProfit,
+        profit_gain: profitGain,
+        profit_lift: profitLift,
       },
       curve_data: pricePoints,
     };
@@ -250,6 +268,39 @@ export default function App() {
             </div>
           </div>
 
+          {/* Profitability Impact Analysis Banner */}
+          <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-4 flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400">
+                {metrics.profit_gain >= 0 ? (
+                  <TrendingUp className="w-5 h-5" />
+                ) : (
+                  <TrendingDown className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-amber-300">Profitability Impact Analysis</h4>
+                <p className="text-xs text-amber-200/80 mt-0.5">
+                  Unit Cost set at <span className="font-semibold text-amber-200">${unitCost}</span>. Moving from baseline price (<span className="font-semibold text-amber-200">${basePrice}</span>) to optimal (<span className="font-semibold text-amber-200">${metrics.optimal_price}</span>) increases total net profit.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-6 text-right shrink-0 ml-4">
+              <div>
+                <span className="block text-[10px] text-amber-400/80 font-medium">PROFIT GAIN</span>
+                <span className="text-sm font-bold text-amber-300">
+                  {metrics.profit_gain >= 0 ? '+' : ''}${metrics.profit_gain.toLocaleString()}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-amber-400/80 font-medium">PROFIT LIFT</span>
+                <span className="text-sm font-bold text-amber-300">
+                  {metrics.profit_lift >= 0 ? '+' : ''}{metrics.profit_lift}%
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Chart Section */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -282,8 +333,10 @@ export default function App() {
                   />
                   <Legend />
                   <ReferenceLine
+                    yAxisId="right"
                     x={metrics.optimal_price}
                     stroke="#10b981"
+                    strokeWidth={2}
                     strokeDasharray="4 4"
                     label={{
                       value: `Optimal: $${metrics.optimal_price}`,
